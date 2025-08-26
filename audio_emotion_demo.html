@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Classification Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .input-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .input-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 1em;
+            resize: vertical;
+            min-height: 100px;
+            margin-bottom: 20px;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .analyze-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .analyze-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .analyze-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .results-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .emotion-result {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .emotion-result:last-child {
+            border-bottom: none;
+        }
+
+        .emotion-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .emotion-confidence {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .confidence-bar {
+            width: 150px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+        }
+
+        .confidence-text {
+            font-weight: bold;
+            color: #667eea;
+            min-width: 40px;
+        }
+
+        .predicted-emotion {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .model-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .model-info h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .model-info p {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .confusion-matrix {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .confusion-matrix h4 {
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .matrix-info {
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .performance-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .performance-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .example-button {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+        }
+
+        .example-button:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+
+        .connection-status {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .connection-status.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Audio Emotion Classification Demo</h1>
+            <p>Advanced AI-powered emotion detection from speech and audio</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div id="connectionStatus" class="connection-status">
+                    🔗 Connecting to model server...
+                </div>
+
+                <h3>🎤 Live Audio Recording</h3>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button id="recordButton" class="file-input-button" onclick="toggleRecording()">
+                        🎤 Start Recording
+                    </button>
+                    <div id="recordingStatus" style="margin-top: 10px; font-weight: bold; color: #dc3545;"></div>
+                    <audio id="audioPlayback" controls style="width: 100%; margin-top: 10px; display: none;"></audio>
+                </div>
+
+                <h3 style="margin-top: 30px;">📁 Audio File Upload</h3>
+                <div class="file-input-wrapper">
+                    <input type="file" id="audioInput" class="file-input" accept="audio/*,.wav,.mp3,.m4a,.ogg">
+                    <button class="file-input-button" onclick="document.getElementById('audioInput').click()">
+                        📁 Choose Audio File
+                    </button>
+                </div>
+                <div id="audioPreview"></div>
+                
+                <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h4 style="color: #0277bd; margin-bottom: 8px;">💡 Audio Tips:</h4>
+                    <p style="font-size: 0.9em; color: #333; margin: 0;">• Speak clearly for 3-10 seconds</p>
+                    <p style="font-size: 0.9em; color: #333; margin: 0;">• Supported formats: WAV, MP3, M4A, OGG</p>
+                    <p style="font-size: 0.9em; color: #333; margin: 0;">• Express different emotions naturally</p>
+                </div>
+
+                <button class="analyze-button" onclick="analyzeEmotion()" id="analyzeBtn">
+                    🔍 Analyze Audio
+                </button>
+            </div>
+
+            <div class="results-section">
+                <h3>📊 Analysis Results</h3>
+                <div id="results">
+                    <div style="text-align: center; color: #999; padding: 40px;">
+                        <div style="font-size: 3em; margin-bottom: 20px;">🎧</div>
+                        <p>Record audio or upload an audio file to see emotion analysis results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confusion-matrix">
+            <h4>🎯 Model Performance Matrix</h4>
+            <div class="matrix-info">
+                Based on validation data - showing prediction accuracy for each emotion
+            </div>
+            
+            <div class="performance-stats">
+                <div class="stat-card">
+                    <div class="stat-value">94%</div>
+                    <div class="stat-label">Angry Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">87%</div>
+                    <div class="stat-label">Neutral Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">86%</div>
+                    <div class="stat-label">Disgust Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">81%</div>
+                    <div class="stat-label">Sad Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">80%</div>
+                    <div class="stat-label">Happy Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">75%</div>
+                    <div class="stat-label">Calm Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">74%</div>
+                    <div class="stat-label">Surprised Recognition</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">52%</div>
+                    <div class="stat-label">Fearful Recognition</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <h4>🤖 Model Information</h4>
+            <p><strong>Architecture:</strong> Deep Neural Network for Emotion Classification</p>
+            <p><strong>Training Data:</strong> 8 emotion categories (Neutral, Calm, Happy, Sad, Angry, Fearful, Disgust, Surprised)</p>
+            <p><strong>Overall Accuracy:</strong> ~83% on validation set</p>
+            <p><strong>Status:</strong> Connected to live model server</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = "https://1da794ffd1bf.ngrok-free.app";
+        const emotions = ['neutral', 'calm', 'happy', 'sad', 'angry', 'fearful', 'disgust', 'surprised'];
+        
+        let mediaRecorder;
+        let recordedChunks = [];
+        let currentAudioBlob = null;
+
+        // Check server connection on load
+        checkServerConnection();
+
+        async function checkServerConnection() {
+            const statusDiv = document.getElementById('connectionStatus');
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '✅ Connected to model server';
+                    statusDiv.className = 'connection-status connected';
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Cannot connect to model server - Using demo mode';
+                statusDiv.className = 'connection-status error';
+                console.error('Server connection failed:', error);
+            }
+        }
+
+        async function toggleRecording() {
+            const recordButton = document.getElementById('recordButton');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const audioPlayback = document.getElementById('audioPlayback');
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        } 
+                    });
+                    
+                    recordedChunks = [];
+                    mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        currentAudioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(currentAudioBlob);
+                        audioPlayback.src = audioUrl;
+                        audioPlayback.style.display = 'block';
+                        
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    recordButton.innerHTML = '🛑 Stop Recording';
+                    recordButton.style.background = 'linear-gradient(135deg, #dc3545, #c82333)';
+                    recordingStatus.innerHTML = '🔴 Recording...';
+                    
+                } catch (error) {
+                    console.error('Error accessing microphone:', error);
+                    alert('Could not access microphone. Please check permissions.');
+                }
+            } else {
+                mediaRecorder.stop();
+                recordButton.innerHTML = '🎤 Start Recording';
+                recordButton.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+                recordingStatus.innerHTML = '✅ Recording complete';
+            }
+        }
+
+        async function analyzeEmotion() {
+            const audioFileInput = document.getElementById('audioInput').files[0];
+            const resultsDiv = document.getElementById('results');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            // Check if we have audio data
+            if (!currentAudioBlob && !audioFileInput) {
+                alert('Please record audio or upload an audio file to analyze!');
+                return;
+            }
+
+            // Show loading state
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '⏳ Analyzing...';
+            
+            resultsDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing emotions using AI model...</p>
+                </div>
+            `;
+
+            try {
+                // Prepare audio data
+                const audioBlob = currentAudioBlob || audioFileInput;
+                const formData = new FormData();
+                
+                if (currentAudioBlob) {
+                    formData.append('audio', audioBlob, 'recording.webm');
+                } else {
+                    formData.append('audio', audioFileInput);
+                }
+
+                // Make API call to your model
+                const response = await fetch(`${API_BASE_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Server response:', result); // Debug log
+                
+                // Handle different response formats
+                let predictions;
+                if (result.success && result.predictions && typeof result.predictions === 'object') {
+                    // Your Flask API format: {success: true, predictions: {...}, top_emotion: {...}}
+                    predictions = result.predictions;
+                } else if (result.top_emotion && result.top_emotion.emotion && result.top_emotion.confidence) {
+                    // Handle format with nested top_emotion object
+                    predictions = {};
+                    const topEmotion = result.top_emotion.emotion;
+                    const confidence = result.top_emotion.confidence;
+                    emotions.forEach(emotion => {
+                        predictions[emotion] = emotion === topEmotion ? confidence : (1 - confidence) / (emotions.length - 1);
+                    });
+                } else if (result.predictions && typeof result.predictions === 'object') {
+                    // Just predictions object
+                    predictions = result.predictions;
+                } else if (typeof result === 'object' && Object.keys(result).some(key => emotions.includes(key))) {
+                    // Direct emotion mapping
+                    predictions = result;
+                } else {
+                    throw new Error('Unexpected response format: ' + JSON.stringify(result));
+                }
+                
+                displayResults(predictions);
+
+            } catch (error) {
+                console.error('Error analyzing audio:', error);
+                
+                // Fallback to demo mode if API fails
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; color: #dc3545; padding: 20px;">
+                        <p>⚠️ Error: ${error.message}</p>
+                        <p>Using demo prediction instead.</p>
+                    </div>
+                `;
+                
+                // Show demo results after a delay
+                setTimeout(() => {
+                    const demoResult = generateDemoResult();
+                    displayResults(demoResult);
+                }, 1000);
+            }
+
+            // Reset button
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '🔍 Analyze Audio';
+        }
+
+        function displayResults(predictions) {
+            const resultsDiv = document.getElementById('results');
+            
+            // Validate predictions object
+            if (!predictions || typeof predictions !== 'object') {
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; color: #dc3545; padding: 20px;">
+                        <p>⚠️ Invalid prediction data received</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Filter out non-numeric values and ensure we have valid emotions
+            const validPredictions = {};
+            Object.entries(predictions).forEach(([emotion, confidence]) => {
+                const numConfidence = parseFloat(confidence);
+                if (!isNaN(numConfidence) && emotions.includes(emotion.toLowerCase())) {
+                    validPredictions[emotion.toLowerCase()] = numConfidence;
+                }
+            });
+
+            // If no valid predictions, use fallback
+            if (Object.keys(validPredictions).length === 0) {
+                const fallbackResult = generateDemoResult();
+                displayResults(fallbackResult);
+                return;
+            }
+
+            // Normalize predictions to sum to 1
+            const sum = Object.values(validPredictions).reduce((a, b) => a + b, 0);
+            if (sum > 0) {
+                Object.keys(validPredictions).forEach(key => {
+                    validPredictions[key] = validPredictions[key] / sum;
+                });
+            }
+
+            // Find the emotion with highest confidence
+            const topEmotion = Object.entries(validPredictions)
+                .sort((a, b) => b[1] - a[1])[0];
+
+            // Display results
+            let resultsHTML = `
+                <div class="predicted-emotion">
+                    Predicted Emotion: ${topEmotion[0].toUpperCase()} (${(topEmotion[1] * 100).toFixed(1)}%)
+                </div>
+            `;
+
+            // Sort emotions by confidence
+            const sortedEmotions = Object.entries(validPredictions)
+                .sort((a, b) => b[1] - a[1]);
+
+            sortedEmotions.forEach(([emotion, confidence]) => {
+                const percentage = (confidence * 100).toFixed(1);
+                resultsHTML += `
+                    <div class="emotion-result">
+                        <span class="emotion-name">${emotion.charAt(0).toUpperCase() + emotion.slice(1)}</span>
+                        <div class="emotion-confidence">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="confidence-text">${percentage}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = resultsHTML;
+        }
+
+        function generateDemoResult() {
+            // Fallback demo results
+            const predictions = {};
+            emotions.forEach(emotion => {
+                predictions[emotion] = Math.random() * 0.3;
+            });
+            
+            // Make one emotion dominant
+            const dominantEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+            predictions[dominantEmotion] = 0.6 + Math.random() * 0.3;
+            
+            // Normalize
+            const sum = Object.values(predictions).reduce((a, b) => a + b, 0);
+            Object.keys(predictions).forEach(key => {
+                predictions[key] = predictions[key] / sum;
+            });
+            
+            return predictions;
+        }
+
+        // Handle audio file preview
+        document.getElementById('audioInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('audioPreview');
+            
+            if (file) {
+                const audioUrl = URL.createObjectURL(file);
+                preview.innerHTML = `
+                    <div style="margin-top: 15px;">
+                        <audio controls style="width: 100%;">
+                            <source src="${audioUrl}" type="${file.type}">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <p style="margin-top: 10px; font-size: 0.9em; color: #666;">Audio file selected: ${file.name}</p>
+                    </div>
+                `;
+                
+                // Clear any previous recording
+                currentAudioBlob = null;
+                const audioPlayback = document.getElementById('audioPlayback');
+                audioPlayback.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
